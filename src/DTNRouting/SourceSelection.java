@@ -1,239 +1,229 @@
 package DTNRouting;
 
+import java.io.IOException;
 import java.util.*;;
 
-public class SourceSelection {
-	Random rand=new Random();
-	
-	SourceSelection() { }
+public class SourceSelection extends dtnrouting{
+	//Random rand = new Random();
+	public SourceSelection() { }
 
-	public int selectSource(double[][] goodnessValue_wrtNetworkMetrics, 
-			ArrayList<ArrayList<Integer>> sourcePaths_toDestination) {
-
-		double average_goodness_Measure[] = new double[sourcePaths_toDestination.size()];
-
-		// Take average of the summed individual goodness measure
-		for(int i = 0; i < sourcePaths_toDestination.size(); i++) {
-			for(int no_metrics = 0; no_metrics < 3; no_metrics++)
-				average_goodness_Measure[i] += goodnessValue_wrtNetworkMetrics[i][no_metrics];
-			average_goodness_Measure[i] = (double) average_goodness_Measure[i] / 3;
-		}
-		
-		//for(int i = 0; i < sourcePaths_toDestination.size(); i++)
-		//	System.out.println(average_goodness_Measure[i]);
-
-		// Select source based on highest average goodness measure
-		double max_goodnessMeasure = 0.0;
-		int selectedSource = -1, index = -1;
-		for(int i = 0; i < sourcePaths_toDestination.size(); i++) {
-			if(average_goodness_Measure[i] > max_goodnessMeasure) {
-				max_goodnessMeasure = average_goodness_Measure[i];
-				selectedSource = sourcePaths_toDestination.get(i).get(0);
-				index = i;
+	// Calculating Source Vs Network Metric Relationship Weights
+	public double[][] sourceVsNetworkMetricRelationshipWeights(double[][] qualityMetricValues, double[][] goodnessValue_wrtNetworkMetrics, double[] relationshipWeights, int noofsources, int no_networkCriteria){
+		// 0 = HC, 1 = IU, 2 = BW, 3 = PI
+		for (int i = 0; i < noofsources; i++){	
+			for (int j = 0; j < no_networkCriteria; j++){
+				if (j == 0)		qualityMetricValues[i][j] = ((goodnessValue_wrtNetworkMetrics[i][3] * relationshipWeights[(j*2)]) + (goodnessValue_wrtNetworkMetrics[i][1] * relationshipWeights[((j*2)+1)]));  // A
+				else if (j == 1)qualityMetricValues[i][j] = ((goodnessValue_wrtNetworkMetrics[i][2] * relationshipWeights[(j*2)]) + (goodnessValue_wrtNetworkMetrics[i][1] * relationshipWeights[((j*2)+1)]));  // C
+				else if (j == 2)qualityMetricValues[i][j] = ((goodnessValue_wrtNetworkMetrics[i][2] * relationshipWeights[(j*2)]) + (goodnessValue_wrtNetworkMetrics[i][0] * relationshipWeights[((j*2)+1)]));  // T
+				else if (j == 3)qualityMetricValues[i][j] = ((goodnessValue_wrtNetworkMetrics[i][3] * relationshipWeights[(j*2)]) + (goodnessValue_wrtNetworkMetrics[i][0] * relationshipWeights[((j*2)+1)]));  // R
 			}
-			else if(average_goodness_Measure[i] == max_goodnessMeasure && rand.nextBoolean() == true) {
-				max_goodnessMeasure = average_goodness_Measure[i];
-				selectedSource = sourcePaths_toDestination.get(i).get(0);
-				index = i;
-			}		
 		}
-		
-		System.out.println(" selected source: " + selectedSource + " has a score of: " 
-		+ average_goodness_Measure[index]);
-
-
-		return selectedSource;
+		return qualityMetricValues;
 	}
-	/*public  LinkedList<Object> sourceSelection_QoIT(int noofcriteria, int noofsources, int totalNetworkNodes, int[] informationSourceList, int destinationNode, Graph graph, classNode[] nodes, classLink[] links, int[] nodeKeys, 
-			WriteFile SrcDstPath_Data_QoIT, String current_time, int runStep, LinkedList<LinkedList<List<classNode>>> shortestPathsArray_forSelectedSources_toAllDestinations, 	int fileNumber, HashMap<String, classLink> link_CAU_QoIT, 
-			HashMap<Integer, ApplicationDataRates> applicationDataRate, HashMap<String, NetworkMetricThresholdValues> networkMetricThresholdValues, double[] relationshipWeights, double[] QoIMetricPairwiseComparisons, 
-			WriteFile computationOverhead_QoIT_Data, HashMap<Integer, selectedSourceInformation> selectedSourceList_QoIT, boolean flag_updatedInfo, Map<Integer, LinkedHashSet<Integer>> srcDstRouteMap_QoIT_updated, 
-			Map<Integer, LinkedHashSet<Integer>> srcDstRouteMap_QoIT, HashMap<Integer, QualityMetricScores> QMS_QoITwrtQoIT_temp, HashMap<Integer, networkData_HashMaps> pnp_SelectedSource_QoITwrtQoIT, 
-			HashMap<Integer, networkData_HashMaps> qms_SelectedSource_QoITwrtQoIT, double[] QoICriteriaWeights, double[] priority_of_QualityMetrics, int iteration, WriteFile QoITSelectedSource_QoIScore_Data,
-			WriteFile QoITSelectedSource_QoITScore_Data) throws Exception {
 
-		int[] infSourceList = new int[informationSourceList.length]; 
-		int sourceIndex=-10, selectedSource_QoIT=-10, hopCount, Noof_QualityMetrics_Met[] = new int[noofsources]; // Number of metrics met
-		double networkMetricValues_PercentageFulfilled[][] = new double[noofsources][noofcriteria], qualityMetricValues[][] = new double[noofsources][noofcriteria], SourceQoITScore[] = new double[noofsources], PriorityScore[] = new double[noofsources];
-		double qualityMetricScores[][] = new double[noofsources][noofcriteria], communicationOverheadTime = 0.0, NetworkMetricValues[][] = new double[noofcriteria][noofsources], SourceComparisonMatrixWRTNetworkMetric[][] = new double[noofsources][noofsources];
-		NetworkMetricThresholdValues nmtv = networkMetricThresholdValues.get(Integer.toString(destinationNode));
-		LinkedList<Object> obj = new LinkedList<Object>();
-		LinkedHashSet<Integer> srcDstRouteNodes = new LinkedHashSet<Integer>();
-
-		for (int i = 0; i < noofsources; i++) { PriorityScore[i] = 0;  Noof_QualityMetrics_Met[i] = 0; SourceQoITScore[i] = 0;} 
-		communicationOverheadTime = networkMetrics.CommunicationOverheadTime(current_time, noofsources, totalNetworkNodes, informationSourceList, destinationNode, graph, nodes, links, runStep, link_CAU_QoIT, applicationDataRate);
-	 *//******************************************************************************************************************************//*
-		// Re-arranging to make infSourceList, because sources are not in order in informationSourceList
-		for(int l = 0; l < informationSourceList.length; l++) {
-			int pathToSource_Size = shortestPathsArray_forSelectedSources_toAllDestinations.get(destinationNode).get(l).size()-1;
-			infSourceList[l] = shortestPathsArray_forSelectedSources_toAllDestinations.get(destinationNode).get(l).get(pathToSource_Size).getSourceLabel(); }	
-	  *//******************************************************************************************************************************//*
-
-		//QoIT wrt QoI
-	   *//******************************************************************************************************************************//*	
-		// "Network Metrics Values" and "Normalized Network Metric Values"
-		// Information-Source Network Metric Values Calculation
-		NetworkMetricValues = ahp.sourceNetworkMetricValues(NetworkMetricValues, noofcriteria, noofsources, totalNetworkNodes, infSourceList, destinationNode, graph, nodes, links, nodeKeys, runStep, fileNumber, link_CAU_QoIT, applicationDataRate);	
-		// Network_Metric/Range to get relative values
-		double networkMetricNormalized[][] = ahp.networkMetricNormalization(NetworkMetricValues, noofsources, noofcriteria, graph, nodes, link_CAU_QoIT, links, runStep, totalNetworkNodes, applicationDataRate, destinationNode, infSourceList);
-
-		// Part(B): Selecting optimal QoI Information-Source
-		double[] SourceQoIScores  = ss.QoIscore_ofSelectedSourcewrtQoITScheme(networkMetricNormalized, SourceComparisonMatrixWRTNetworkMetric, relationshipWeights, QoICriteriaWeights, noofsources, noofcriteria, 
-				infSourceList, destinationNode, current_time);
-
-		// QoIT wrt QoIT
-	    *//******************************************************************************************************************************//*	
-		long startTime_QoIT = System.nanoTime(); 
-
-		for(int i = 0; i < infSourceList.length; i++) {
-			double Bandwidth = Double.MAX_VALUE, informationUtility = 0.0, linkIntegrity = 0.0, bandwidth_and_communicationOverhead[];
-			Dijkstra dijkstra = new Dijkstra(graph, nodes[infSourceList[i]].getLabel(), link_CAU_QoIT);
-			HashMap<String,String> predecessors =  dijkstra.predecessorsList(graph, nodes[infSourceList[i]].getLabel(), link_CAU_QoIT).get(0);
-
-			// Exploring Network Metric Values possessed by particular Src-Dst route
-			bandwidth_and_communicationOverhead = networkMetrics.getBandwidth(dijkstra.getPathTo(Integer.toString(destinationNode)), Integer.toString(infSourceList[i]),
-					nodes[infSourceList[i]], links, Bandwidth, graph, nodes[destinationNode].getLabel(), predecessors, runStep, totalNetworkNodes, applicationDataRate, link_CAU_QoIT);
-			hopCount = networkMetrics.hopCount(Integer.toString(destinationNode), graph, nodes, infSourceList[i], link_CAU_QoIT);
-			linkIntegrity = networkMetrics.getLinkIntegrity(nodeKeys, Integer.toString(infSourceList[i]), linkIntegrity, graph, nodes[destinationNode], predecessors);
-			informationUtility = networkMetrics.getInformationUtility(informationUtility, Integer.toString(infSourceList[i]));
-			Bandwidth = bandwidth_and_communicationOverhead[0];
-
-			double BW = 0.0, HC = 0.0, LI = 0.0, IU = 0.0;
-
-			if((Double.compare(Bandwidth, nmtv.get_bandwidth()) >= 0)) BW = 1; 	                      else BW = Bandwidth/nmtv.get_bandwidth();
-			if(hopCount <= nmtv.get_hopCount()) HC = 1; 			                                  else HC = (double) nmtv.get_hopCount()/hopCount;
-			if((Double.compare(linkIntegrity, nmtv.get_linkIntegrity()) >= 0)) LI = 1;   			  else LI = linkIntegrity / nmtv.get_linkIntegrity(); 
-			if((Double.compare(informationUtility, nmtv.get_informationUtility()) >= 0)) IU = 1; 	  else IU = informationUtility/nmtv.get_informationUtility();  
-
-			networkMetricValues_PercentageFulfilled[i][0] = HC; networkMetricValues_PercentageFulfilled[i][1] = IU;
-			networkMetricValues_PercentageFulfilled[i][2] = BW; networkMetricValues_PercentageFulfilled[i][3] = LI;
+	// Calculating Individual Quality Metric Scores w.r.t all Sources for Thresholds-based-QoI-Scheme 
+	public double[][] qualityMetricScores_QoIT(double[][] qualityMetricValues, double[] QoICriteriaWeights, int noofsources, int noofcriteria, 
+			double[][] qualityMetricScores) throws IOException {
+		//QMS_temp represents: QMS_(QoI/QoIT/TE)wrtQoIT_temp
+		for (int i = 0; i < noofsources; i++){	 
+			for (int j = 0; j < noofcriteria; j++){	
+				qualityMetricScores[i][j] = qualityMetricValues[i][j] * QoICriteriaWeights[j];
+			}
 		}
+		return qualityMetricScores;
+	}
+
+
+	// QoIT Scheme without using UAVs
+
+	public int sourceSelection_QoIT_withoutUAV(double[][] networkMetricValues, double[][] goodnessValue_wrtNetworkMetrics, ArrayList<ArrayList<Integer>> srcDestPaths,
+			int destinationNode) throws Exception {
+		
+		
+		int no_networkCriteria = 4, selectedSource_QoIT=-10, noofsources = srcDestPaths.size();
+		double[] priority_of_QualityMetrics = {0.4, 0.2, 0.1, 0.3};  //A,   C,   T,   R Vector Matrix of QoI Criteria Weights
+		double[] QoICriteriaWeights = {0.4, 0.2, 0.1, 0.3};  //A,   C,   T,   R Vector Matrix of QoI Criteria Weights
+		double relationshipWeights[] = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5}; 
+		int Noof_QualityMetrics_Met[] = new int[noofsources]; // Number of metrics met
+		double qualityMetricValues[][] = new double[noofsources][no_networkCriteria];
+		double SourceQoITScore[] = new double[noofsources];
+		double PriorityScore[] = new double[noofsources];
+		double qualityMetricScores[][] = new double[noofsources][no_networkCriteria];
+		//LinkedList<Object> obj = new LinkedList<Object>();
+		//LinkedHashSet<Integer> srcDstRouteNodes = new LinkedHashSet<Integer>();
+
+		
+		
+		for (int i = 0; i < noofsources; i++) { PriorityScore[i] = 0;  Noof_QualityMetrics_Met[i] = 0; SourceQoITScore[i] = 0; } 
 
 		// Individual Quality Metric VALUES and SCORES w.r.t column: A, C, T, R
-		qualityMetricValues =  ahp.sourceVsNetworkMetricRelationshipWeights(qualityMetricValues, networkMetricValues_PercentageFulfilled, relationshipWeights, noofsources, noofcriteria);
-		qualityMetricScores =  ahp.qualityMetricScores_QoIT(qualityMetricValues, QoICriteriaWeights, noofsources, noofcriteria, infSourceList, destinationNode, qualityMetricScores, QMS_QoITwrtQoIT_temp);
+		qualityMetricValues =  sourceVsNetworkMetricRelationshipWeights(qualityMetricValues, goodnessValue_wrtNetworkMetrics, relationshipWeights, noofsources, no_networkCriteria);
+		qualityMetricScores =  qualityMetricScores_QoIT(qualityMetricValues, QoICriteriaWeights, noofsources, no_networkCriteria, qualityMetricScores);
 
 		for (int i = 0; i < noofsources; i++){	
-			for (int j = 0; j < noofcriteria; j++){
-				if(Double.compare(qualityMetricScores[i][j],QoICriteriaWeights[j]) == 0) { // Sum of Priorities of metrics met, Number of metric met, Sum of all -> QM_Score/QM_Threshold					
+			for (int j = 0; j < no_networkCriteria; j++){
+				if(Double.compare(qualityMetricScores[i][j], QoICriteriaWeights[j]) == 0) { // Sum of Priorities of metrics met, Number of metric met, Sum of all -> QM_Score/QM_Threshold					
 					PriorityScore[i] += priority_of_QualityMetrics[j]; 	Noof_QualityMetrics_Met[i] += 1;}
 				SourceQoITScore[i] += qualityMetricScores[i][j];					
 			}
 		}
 
 		// Selecting Source w.r.t QoIT Scheme
-		selectedSource_QoIT = ahp.data_selectedSource_QoIT(qualityMetricScores, QoICriteriaWeights, noofsources, infSourceList, destinationNode, PriorityScore, Noof_QualityMetrics_Met, 
-				SourceQoITScore, selectedSourceList_QoIT, runStep, flag_updatedInfo);
-
-		long endTime_QoIT = System.nanoTime(), elapsedTime_QoIT  = (endTime_QoIT - startTime_QoIT);
-		double seconds = ((double)elapsedTime_QoIT + communicationOverheadTime) / 1000000000.0;
-		computationOverhead_QoIT_Data.writeToFile(seconds);
-
-	     *//*********************************************************************************************************************************************************************************//*
-		// Storing updated info wrt "pnp_SelectedSource_QoIwrtQoIT"
-		for(int i = 0; i < infSourceList.length; i++) { if(selectedSource_QoIT == infSourceList[i]) { sourceIndex = i; break; } }
-
-		if(selectedSource_QoIT != -1) {
-			HashMap<String,String> predecessors = new HashMap<String,String>();
-			Dijkstra dijkstra = new Dijkstra(graph, Integer.toString(selectedSource_QoIT), link_CAU_QoIT);
-			predecessors =  dijkstra.predecessorsList(graph, Integer.toString(selectedSource_QoIT), link_CAU_QoIT).get(0);
-			double Bandwidth = Double.MAX_VALUE, informationUtility = 0.0, linkIntegrity = 0.0, bandwidth_and_communicationOverhead[];
-			double accuracy = 0.0, completeness = 0.0, timeliness = 0.0, reliability = 0.0;
-			boolean flag_sameAs_previousPath = false;
-			List<classNode> path = shortestPathsArray_forSelectedSources_toAllDestinations.get(destinationNode).get(sourceIndex);
-
-			// Exploring Network Metric Values possessed by Src-Dst route
-			double assigned_bandwidth = networkMetrics.allotedBandwidth(Integer.toString(selectedSource_QoIT), Bandwidth, graph, nodes[destinationNode].getLabel(), predecessors, applicationDataRate, link_CAU_QoIT, 
-					networkMetricThresholdValues);	
-			hopCount = networkMetrics.hopCount(Integer.toString(destinationNode), graph, nodes, selectedSource_QoIT, link_CAU_QoIT);
-			linkIntegrity = networkMetrics.getLinkIntegrity(nodeKeys, Integer.toString(selectedSource_QoIT), linkIntegrity, graph, nodes[destinationNode], predecessors);
-			informationUtility = networkMetrics.getInformationUtility(informationUtility, Integer.toString(selectedSource_QoIT));
-
-	      *//*********************************************************************************************************************************************************************************//*
-			// New implementation			
-			//populating srcDstRouteNodes with src-dst path nodes
-			for(int pathLength = 0; pathLength <= hopCount; pathLength++)  srcDstRouteNodes.add(Integer.parseInt(path.get(pathLength).getLabel()));		
-
-			// Storing selected src-dst route into "srcDstRouteMap_QoI_updated" (for each iteration) and "srcDstRouteMap_QoI" (only when n/w info is propagated)
-			srcDstRouteMap_QoIT_updated.put(destinationNode, srcDstRouteNodes);
-			if(flag_updatedInfo == true) srcDstRouteMap_QoIT.put(destinationNode, srcDstRouteNodes);
-
-			// To decide what to write to the "SrcDstPath_Data_QoI" file i.e. either -1 or the path (if )
-			LinkedHashSet<Integer> srcDstRouteNodes_updated  = srcDstRouteMap_QoIT_updated.get(destinationNode), srcDstRouteNodes_previous = srcDstRouteMap_QoIT.get(destinationNode);
-			Iterator<Integer> srcDstUpdatedRoute_Iterator = srcDstRouteNodes_updated.iterator(), srcDstPreviousRoute_Iterator = srcDstRouteNodes_previous.iterator();
-
-			if(srcDstRouteNodes_updated.size() == srcDstRouteNodes_previous.size()) {
-				for(int i = 0; i < srcDstRouteNodes_previous.size(); i++) {				
-					if(srcDstUpdatedRoute_Iterator.next() == srcDstPreviousRoute_Iterator.next())  flag_sameAs_previousPath = true;
-					else                                                                         { flag_sameAs_previousPath = false; break; }
-				}
+		selectedSource_QoIT = calculating_parameters_QoIT(qualityMetricScores, QoICriteriaWeights, noofsources, destinationNode, PriorityScore, Noof_QualityMetrics_Met, 
+				SourceQoITScore, srcDestPaths);
+		
+	
+		try {
+			int selectedSource_index = -1;
+			for(int source_index = 0; source_index < networkMetricValues.length; source_index++) {
+				Node node_dummy = dtnrouting.liveNodes.get(srcDestPaths.get(source_index).get(0));
+				//if (selectedSource_QoIT == dtnrouting.liveNodes.get(srcDestPaths.get(source_index).get(0)).ID-1) {
+				if (selectedSource_QoIT == dtnrouting.liveNodes.indexOf(node_dummy)) {
+					selectedSource_index = source_index;
+					break;
+				}					
 			}
+			NetworkMetricValues_SelectedSource.writeToFile(destinationNode, selectedSource_QoIT, networkMetricValues[selectedSource_index][2],
+					networkMetricValues[selectedSource_index][0], networkMetricValues[selectedSource_index][3],networkMetricValues[selectedSource_index][1]);
+			QualityMetricsScore_SelectedSource.writeToFile(destinationNode, selectedSource_QoIT, qualityMetricScores[selectedSource_index][0], 
+					qualityMetricScores[selectedSource_index][1], qualityMetricScores[selectedSource_index][2], qualityMetricScores[selectedSource_index][3]);
+			PNP_SelectedSource.writeToFile(destinationNode, selectedSource_QoIT, PriorityScore[selectedSource_index], Noof_QualityMetrics_Met[selectedSource_index], 
+					SourceQoITScore[selectedSource_index]);
+			NetworkMetricsScore_SelectedSource.writeToFile(destinationNode, selectedSource_QoIT, goodnessValue_wrtNetworkMetrics[selectedSource_index][2], goodnessValue_wrtNetworkMetrics[selectedSource_index][0],
+					goodnessValue_wrtNetworkMetrics[selectedSource_index][3],goodnessValue_wrtNetworkMetrics[selectedSource_index][1]);
+		
+		} catch (IOException e) { e.printStackTrace(); }
+		
+		return selectedSource_QoIT;
+		
+	}
 
-			if(flag_sameAs_previousPath == true) { 
-				for(int pathLength = 0; pathLength <= hopCount; pathLength++) 
-					SrcDstPath_Data_QoIT.writeToFile(iteration, path.get(pathLength).getLabel(), hopCount, pathLength);
-			}
-			else SrcDstPath_Data_QoIT.writeToFile(iteration, destinationNode, -3);
-	       *//*********************************************************************************************************************************************************************************//*
-			Object KeySet[] = QMS_QoITwrtQoIT_temp.keySet().toArray();
-			for(int i = 0; i < KeySet.length; i++) {
-				QualityMetricScores qms = QMS_QoITwrtQoIT_temp.get((int) KeySet[i]);
-				if(qms.get_sourceNode() == selectedSource_QoIT) {
-					accuracy = qms.get_Accuracy(); completeness = qms.get_Completeness(); timeliness = qms.get_Timeliness(); reliability = qms.get_Reliability();
-					break;   					
-				}
-			}	
-	        *//*********************************************************************************************************************************************************************************//*	
-			// Storing non-updated info wrt "pnp_SelectedSource_QoITwrtQoIT"
-			if (flag_updatedInfo == true) {
-				pnp_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, PriorityScore[sourceIndex], Noof_QualityMetrics_Met[sourceIndex], SourceQoITScore[sourceIndex]));					
-				qms_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, accuracy, completeness, timeliness, reliability));
-				QoITSelectedSource_QoITScore_Data.writeToFile(runStep, destinationNode, selectedSource_QoIT, SourceQoITScore[sourceIndex]);
-				QoITSelectedSource_QoIScore_Data.writeToFile(runStep, destinationNode, selectedSource_QoIT, SourceQoIScores[sourceIndex]);
-			}
-			else {
-				srcDstRouteNodes_updated  = srcDstRouteMap_QoIT_updated.get(destinationNode); srcDstRouteNodes_previous = srcDstRouteMap_QoIT.get(destinationNode); 
-				srcDstUpdatedRoute_Iterator  = srcDstRouteNodes_updated.iterator(); srcDstPreviousRoute_Iterator = srcDstRouteNodes_previous.iterator();
-				flag_sameAs_previousPath = false;
+	public int calculating_parameters_QoIT(double[][] qualityMetricScores, double[] QoICriteriaWeights, int noofsources, int destinationNode, 
+			double[] PriorityScore, int[] Noof_QualityMetrics_Met, double[] SourceQoITScore, ArrayList<ArrayList<Integer>> srcDestPaths) throws IOException {
 
-				if(srcDstRouteNodes_updated.size() == srcDstRouteNodes_previous.size()) {
-					for(int i = 0; i < srcDstRouteNodes_previous.size(); i++) {
-						if( srcDstUpdatedRoute_Iterator.next() == srcDstPreviousRoute_Iterator.next())  flag_sameAs_previousPath = true;
-						else 									                                      { flag_sameAs_previousPath = false; break; }
-					}
+		// array of only maximum Priority elements, array of number of metrics met for maximum Priority elements, array of sources of maximum Priority elements
+		int selectedSource = -1, sourceCounter = 0, noofMetricsMet_maxPriorityScore[] = null, infSrcList_maxPriorityScore[] = null;
+		double sourceQoITScore_maxPriorityScore[] = null, maxPriorityScore[] = null, maxPriority = 0.0;
 
-					if (flag_sameAs_previousPath == true) {
-						pnp_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, PriorityScore[sourceIndex], Noof_QualityMetrics_Met[sourceIndex], SourceQoITScore[sourceIndex]));
-						qms_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, accuracy, completeness, timeliness, reliability));
-					}
-					else {
-						pnp_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, 0, 0, 0));	
-						qms_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, 0.0, 0.0, 0.0, 0.0));
-					}
-				}
-				else {
-					pnp_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, 0, 0, 0));	
-					qms_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, selectedSource_QoIT, 0.0, 0.0, 0.0, 0.0));
-				}
-			}
-
-	         *//**********************************************************************************************************************************************************************************//*			
-			obj.add(selectedSource_QoIT);
-			obj.add(predecessors);
-			obj.add(assigned_bandwidth);
-			obj.add(hopCount);
-			obj.add(linkIntegrity);
-			obj.add(informationUtility);
-			return obj;
+		// A. 1
+		// Counting No. of Sources satisfying all Quality Metric Thresholds 
+		for (int i = 0; i < noofsources; i++){		
+			if((qualityMetricScores[i][0] == QoICriteriaWeights[0]) && (qualityMetricScores[i][1] == QoICriteriaWeights[1]) && 
+					(qualityMetricScores[i][2] == QoICriteriaWeights[2]) && (qualityMetricScores[i][3] == QoICriteriaWeights[3])) 
+				sourceCounter++;				
 		}
 
-		else {	
-			SrcDstPath_Data_QoIT.writeToFile(iteration, destinationNode, -1);	
-			pnp_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, -1, 0, 0, 0));
-			qms_SelectedSource_QoITwrtQoIT.put(destinationNode, new networkData_HashMaps(iteration, destinationNode, -1, 0.0, 0.0, 0.0, 0.0));
-			obj.add(selectedSource_QoIT);
-			return obj;
+		// Identifying Sources which satisfy all Quality Metric Thresholds
+		int thresholdSatisfyingSources [] = new int[sourceCounter], k = 0;
+		for (int i = 0; i < noofsources; i++) {		
+			if((qualityMetricScores[i][0] == QoICriteriaWeights[0]) && (qualityMetricScores[i][1] == QoICriteriaWeights[1]) && (qualityMetricScores[i][2] == QoICriteriaWeights[2]) && (qualityMetricScores[i][3] == QoICriteriaWeights[3])) {
+				Node node_dummy = dtnrouting.liveNodes.get(srcDestPaths.get(i).get(0));
+				thresholdSatisfyingSources[k] = dtnrouting.liveNodes.indexOf(node_dummy);
+				k++;
+			} }
+
+		// A. 2
+		// PriorityScore ={9,6,7,7,9,5}; Noof_QualityMetrics_Met = {3,3,3,2,3,2}; infSrcList ={0,1,2,3,4,5}
+		// Finding Maximum of Array: PriorityScore i.e. {9, 6, 7, 7, 9, 5} = 9
+		if(thresholdSatisfyingSources.length == 0) {
+			
+			maxPriority = PriorityScore[0]; 
+			for (int i = 1; i < PriorityScore.length; i++) 	 
+				if(Double.compare(maxPriority, PriorityScore[i]) < 0) 
+					maxPriority = PriorityScore[i];  
+
+			if(Double.compare(maxPriority, 0.0) > 0) {
+				int  count = 0, a = 0;
+				
+				// Count elements with maximum PriorityScore i.e. {9, 6, 7, 7, 9, 5} = 2(9)
+				for(int i = 0; i < PriorityScore.length; i++) 
+					if(Double.compare(maxPriority, PriorityScore[i]) == 0) 
+						count++; 
+
+				maxPriorityScore = new double[count];     
+				noofMetricsMet_maxPriorityScore = new int[count]; 
+				infSrcList_maxPriorityScore = new int[count]; 
+				sourceQoITScore_maxPriorityScore = new double[count];
+
+				// populating arrayof_maxPriorityMet, noofMetricsMet_maxPriorityScore, infSrcList_maxPriorityScore, sourceQoITScore_maxPriorityScore
+				// in accordance to maxPriority
+				for(int i = 0; i < PriorityScore.length; i++) {
+					if(Double.compare(maxPriority, PriorityScore[i]) == 0) {
+						maxPriorityScore[a] = PriorityScore[i];				// set array to 9, 9
+						noofMetricsMet_maxPriorityScore[a] = Noof_QualityMetrics_Met[i];     // set array to 3, 3
+						Node node_dummy = dtnrouting.liveNodes.get(srcDestPaths.get(i).get(0));
+						infSrcList_maxPriorityScore[a] = dtnrouting.liveNodes.indexOf(node_dummy);  // set array to 0, 4
+						sourceQoITScore_maxPriorityScore[a] = SourceQoITScore[i];
+						a++;
+					} 
+				} 
+			} 
 		}
-	}*/
+
+		selectedSource = selectedSource_QoIT(thresholdSatisfyingSources, SourceQoITScore, selectedSource, maxPriority, maxPriorityScore, infSrcList_maxPriorityScore, 
+				noofMetricsMet_maxPriorityScore, sourceQoITScore_maxPriorityScore, destinationNode, noofsources, srcDestPaths);
+
+		return selectedSource;
+	}
+
+	// QoIT-based Source Selection: w.r.t user's Network/Quality Metric Threshold Values
+	public int selectedSource_QoIT(int[] thresholdSatisfyingSources, double[] SourceQoITScore, int selectedSource, double maxPriority, double[] maxPriorityScore, 
+			int[] infSrcList_maxPriorityScore, int[] noofMetricsMet_maxPriorityScore, double[] sourceQoITScore_maxPriorityScore, int destinationNode, int noofsources,
+			ArrayList<ArrayList<Integer>> srcDestPaths) throws IOException{
+
+		int initialSource = -1, min_NoofMetricsMet; 
+		Random random = new Random(); 
+		double maxQoITScore; 
+
+		// Selecting QoIT Source
+		if(thresholdSatisfyingSources.length >= 1)	{		 			// if number of thresholdSatisfyingSources >= 1
+			selectedSource = thresholdSatisfyingSources[0];
+			/*
+			 * for(int i = 1; i < thresholdSatisfyingSources.length; i++) { if
+			 * (random.nextBoolean() == true) selectedSource =
+			 * thresholdSatisfyingSources[i]; }
+			 */
+		}
+		else if (Double.compare(maxPriority, 0.0) > 0){
+			if(maxPriorityScore.length == 1) 
+				selectedSource = infSrcList_maxPriorityScore[0];  		// if only one source having maximum Priority Score
+			else {                         								// if multiple sources having maximum Priority Score
+				min_NoofMetricsMet = noofMetricsMet_maxPriorityScore[0]; 
+				maxQoITScore = sourceQoITScore_maxPriorityScore[0]; 
+				selectedSource = infSrcList_maxPriorityScore[0];
+
+				for (int i = 1; i < noofMetricsMet_maxPriorityScore.length; i++) {
+					if (min_NoofMetricsMet > noofMetricsMet_maxPriorityScore[i])  {					// 3 (4,2,1) > 2 (4,3) , min_NoofMetricsMet = 2							 
+						min_NoofMetricsMet = noofMetricsMet_maxPriorityScore[i]; 
+						maxQoITScore = sourceQoITScore_maxPriorityScore[i]; 
+						selectedSource = infSrcList_maxPriorityScore[i];	
+					}
+					else if (min_NoofMetricsMet == noofMetricsMet_maxPriorityScore[i]) {		    // 2 (4,3) == 2 (4,3)	
+						if(Double.compare(maxQoITScore, sourceQoITScore_maxPriorityScore[i]) < 0) { 
+							maxQoITScore = sourceQoITScore_maxPriorityScore[i]; 
+							selectedSource = infSrcList_maxPriorityScore[i]; 
+						}
+						else if ((Double.compare(maxQoITScore, sourceQoITScore_maxPriorityScore[i]) == 0) && (random.nextBoolean() == true)) 
+							selectedSource = infSrcList_maxPriorityScore[i];	
+					} 
+				} 
+			} 
+		}
+		else if (Double.compare(maxPriority, 0.0) == 0) { 
+			maxQoITScore = SourceQoITScore[0];
+			Node node_dummy= dtnrouting.liveNodes.get(srcDestPaths.get(0).get(0));
+			selectedSource = dtnrouting.liveNodes.indexOf(node_dummy);
+			/*
+			 * for (int i = 1; i < SourceQoITScore.length; i++) { if(maxQoITScore <
+			 * SourceQoITScore[i]) { maxQoITScore = SourceQoITScore[i]; selectedSource =
+			 * dtnrouting.livesNodes.get(srcDestPaths.get(i).get(0)).ID-1; } else if
+			 * (maxQoITScore == SourceQoITScore[i])// && random.nextBoolean() == true)
+			 * selectedSource = dtnrouting.livesNodes.get(srcDestPaths.get(i).get(0)).ID-1; }
+			 */
+		}
+		else  selectedSource = -1; 
+
+		return selectedSource;
+	}
 
 }

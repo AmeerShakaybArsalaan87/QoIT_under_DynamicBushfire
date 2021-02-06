@@ -15,8 +15,8 @@ import javax.swing.JFrame;
 public class Packet implements ActionListener
 {
 //Instance Variables
-    public Node destNode=new Node(); //destination node of the packet
-    public Node sourceNode=new Node(); //source node of the packet
+    public Node destNode_ofpacket=new Node(); //destination node of the packet
+    public Node sourceNode_ofpacket=new Node(); //source node of the packet
     public int packetTTL,maxTTL;
     // Features used to assess network transmission quality
     public int packetLoad=1,packetHops=0,packetLatency=0;

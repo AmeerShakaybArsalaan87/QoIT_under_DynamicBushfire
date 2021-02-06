@@ -71,7 +71,7 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 			cspeed.add((speed+1)*10+""); // setting speed of the mobile node
 
 		//Add radio ranges and queue sizes to their respective choice boxes
-		for(int l=1;l<=5;l=l+1)
+		for(int l=1;l<=10;l=l+1)
 		{
 			cradiorange.add(l+"");//add Radio Range indices
 			cqueuesize.add(l +"");
@@ -201,8 +201,8 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 					node.ID=Node.ID_INCREMENTER;
 					node.name="S"+node.ID;
 					node.speed=0;
-					dtnrouting.Sources.add(node);
-					node.setRadioRange(4);
+					dtnrouting.allSources.add(node);
+					node.setRadioRange(5);
 					node.wholeQueueSize=node.queueSizeLeft=500;
 					dtnrouting.allNodes.add(node);
 					node.nodePosition();
@@ -283,12 +283,11 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 					num.add(rand_number);
 					Node node=dtnrouting.allNodes.get(rand_number);
 					node.name = "D"+node.name.substring(1); //Rename it.
-					dtnrouting.Destinations.add(node);
+					dtnrouting.allDestinations.add(node);
 					RequirementsofDestination(node);
 					PacketsforDestination(node);
 				}
-					// Give size to the destination source pair
-					dtnrouting.destsourcePair= new int [dtnrouting.Destinations.size()];
+					
 			}
 			
 
@@ -301,12 +300,16 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 	}
    
 	// *****************************************************************************
-
-	//Specifying User Requirements w.r.t network metrics
 	public void RequirementsofDestination(Node node) {
-		node.neworkMetricRequirements[0] = rand.nextInt(10) + 1;                 // 0 = hopCount
-		node.neworkMetricRequirements[1] = rand.nextDouble() * (2.0 - 0.0) + 0.0;  // 1 = bandwidth = 0.1 Mbps or 100 Kbps
-		node.neworkMetricRequirements[2] = rand.nextInt(4) + 1;                  // 2 = pathIntegrity		
+		node.neworkMetricRequirements[0] = rand.nextInt(10) + 1;                   // 0 = hopCount
+		node.neworkMetricRequirements[1] = rand.nextDouble() * (10.0 - 1.0) + 1.0; // 1 = informationUtility 
+		node.neworkMetricRequirements[2] = rand.nextDouble() * (2.0 - 0.1) + 0.1;  // 2 = bandwidth = 0.1 Mbps or 100 Kbps
+		node.neworkMetricRequirements[3] = rand.nextInt(4) + 1;                    // 3 = pathIntegrity		
+		
+		try {
+			UserRequirements_wrt_NetworkMetricValues.writeToFile(node.ID-1, node.neworkMetricRequirements[2], node.neworkMetricRequirements[0],
+					node.neworkMetricRequirements[3], node.neworkMetricRequirements[1]);
+		} catch (IOException e) { e.printStackTrace(); }
 	}
 	// *****************************************************************************
 
@@ -316,8 +319,8 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 
 		// Specify the packet destined for this node
 		// Move this code to when destinations are created
-		node.num_packets = rand.nextInt(5)+5; //rand.nextInt(30)+10;
-		node.packets_ttl = rand.nextInt(10)+10;
+		node.num_packets = rand.nextInt(10)+5; //rand.nextInt(30)+10;
+		node.packets_ttl = rand.nextInt(20)+40;
 
 		//Below code generates packets for each destination				
 		for(int j=0; j< node.num_packets; j++) {//number of packets that each source will transmit..
@@ -325,6 +328,7 @@ public class CreateNode extends dtnrouting  implements ItemListener, ActionListe
 			Packet.packetID=Packet.packetID+1;
 			p.packetName ="p"+Packet.packetID;
 			p.maxTTL=node.packets_ttl;
+			p.destNode_ofpacket=node;
 			p.refreshPacketSettings();
 			node.nodePackets.add(p);
 			dtnrouting.arePacketsDelivered.add(p);}

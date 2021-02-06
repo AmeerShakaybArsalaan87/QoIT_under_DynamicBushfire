@@ -1,2 +1,0 @@
-# adhoc-network
-Disconnected nework

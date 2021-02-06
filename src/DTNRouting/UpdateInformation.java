@@ -2,7 +2,7 @@
 package DTNRouting;
 
 //IMPORT PACKAGES
-import Results.*;
+//import Results.*;
 import RoutingProtocols.RoutingProtocol;
 
 import java.io.File;
@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -25,12 +26,11 @@ import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
 public class UpdateInformation {
     //Instance Variables
 	RoutingProtocol rp;
-    RP_Performance rpp=new RP_Performance();
+  //  RP_Performance rpp=new RP_Performance();
+	FireLocation fire_loc=new FireLocation();
     Random rand;
-    PrintWriter writer=null;
-    private StringBuilder sb = new StringBuilder();
-    private static DecimalFormat df2 = new DecimalFormat("#.##");
     public static int number_of_uavs = 0;
+   
 
 //******************************************************************************
 //Constructor
@@ -43,19 +43,9 @@ public UpdateInformation(){
 public void UpdateTTLandLatency()
 {   
 	  //1. Update simulation timer
-      df2.setRoundingMode(RoundingMode.DOWN);
 	  dtnrouting.timer+=1;
-      //2. Set Dynamic TSA arrays to default value
-	    Arrays.fill(dtnrouting.RR, -1);
-	    Arrays.fill(dtnrouting.CR, -1);
-	    Arrays.fill(dtnrouting.RC, -1);
-	    Arrays.fill(dtnrouting.RA, -1);
-	    Arrays.fill(dtnrouting.PP, -1);
-	    Arrays.fill(dtnrouting.EP, -1);
-	    Arrays.fill(dtnrouting.Result, -1);
-	    dtnrouting.TransferNodes.clear();
 	  
-	  //3. Update delivered and expired packets information
+	  //2. Update delivered and expired packets information
 	  for(int h=0;h < dtnrouting.arePacketsDelivered.size();h++)
       {   Packet packetObj=dtnrouting.arePacketsDelivered.get(h);
           packetObj.packetTTL-=1;
@@ -66,79 +56,29 @@ public void UpdateTTLandLatency()
             //if packet's TTL expires, it cannot be delivered else if
             packetObj.isTTLExpired=true;
             packetObj.packetLatency=packetObj.maxTTL;
-            dtnrouting.total_packetsDeliveredExpired += 1;}}}
+            dtnrouting.total_packetsDeliveredExpired += 1;
+            
+            dtnrouting.performanceFile.append(dtnrouting.SIMULATION_N0+","+dtnrouting.SIMULATION_PART+","+packetObj.destNode_ofpacket.name+","+packetObj.sourceNode_ofpacket.name+","+packetObj.destNode_ofpacket.num_packets+","+packetObj.packetName+","+packetObj.packetHops+","+((int)dtnrouting.timer)+","+packetObj.packetReliability+","+0+"\n");
+        	dtnrouting.performanceFile.flush();
+          
+          }}}
       
-     //4. When packets are delivered or expired
-	 //   store summary of results
+     //3. When packets are delivered or expired
 	 //   stop simulation temporarily
      if(dtnrouting.total_packetsDeliveredExpired==dtnrouting.arePacketsDelivered.size() 
      & dtnrouting.arePacketsDelivered.size()!=0)
      {
          dtnrouting.deliveryTA.setText("");
     	 dtnrouting.deliveryTA.setText("PACKET DEDLIVER || EXPIRED");
-	      // STOP SIMULATION 
+	     dtnrouting.THIS_SIMULATION_ENDED=true;}
 
-	      for(int h=0;h<dtnrouting.Destinations.size();h++)
-	      {
-	    	  Node destNode = dtnrouting.Destinations.get(h);
-	    	  double expired = 0;
-	    	  for(int m=0; m < destNode.nodePackets.size(); m++)
-	    	  {
-	    		  destNode.msg_latency+=destNode.nodePackets.get(m).packetLatency;
-	    		    
-	    		  
-	    		  if(destNode.nodePackets.get(m).ispacketDelivered) {
-	    			destNode.msg_relibility+=destNode.nodePackets.get(m).packetReliability;
-	    			destNode.msg_hops+=destNode.nodePackets.get(m).packetHops;
-	    		    destNode.msg_dl+=1;
-	    		    
-	    		  }
-	    		  if(destNode.nodePackets.get(m).isTTLExpired)
-	    			  expired +=1;
-	    	  }
-	    	  // Hops and reliability for delivered messages
-	    	  if(destNode.msg_dl>0) {
-	    	  destNode.msg_hops = (int)destNode.msg_hops / destNode.msg_dl;    	  
-	          destNode.msg_relibility = (double)destNode.msg_relibility / (double) destNode.msg_dl;}
-	    	  else {
-	    		  //INVALID NUMBERS
-	    		  destNode.msg_hops=9999;
-	    		  destNode.msg_relibility=9999;
-	    	  }
-	    	  destNode.msg_latency = (double)destNode.msg_latency / (double) destNode.num_packets;
-	    	  destNode.msg_dl =  (double)destNode.msg_dl / (double) destNode.num_packets;
-	    	 
-	  	      
-	    	  if(sb.length()==0)
-	    	  sb.append("simulation_run, type, dest,  latency, hop , delivery, failure, reliability\n");
-			  
-	  	      sb.append(
-	  	      (dtnrouting.TOTAL_SIMULATION_RUNS-dtnrouting.SIMULATION_N0 +1) + ", " +
-			  dtnrouting.SIMULATION_PART + "," + (h+1) +  ", " +
-	  	      df2.format(destNode.msg_latency)+ ", " +
-			  destNode.msg_hops + ", " +
-			  df2.format(destNode.msg_dl)+  ", " +
-			  df2.format(expired/destNode.nodePackets.size())+  ", " +
-			  df2.format(destNode.msg_relibility)+"\n");
-	  	      dtnrouting.deliveryTA.append("\n"+destNode.name+", dl: "+destNode.msg_dl);
-	  	   
-	      }
-	      
-	        dtnrouting.THIS_SIMULATION_ENDED=true;
-	    
-	        // Add to file 
-	    	//First simulation run
-	    	if(dtnrouting.SIMULATION_N0==dtnrouting.TOTAL_SIMULATION_RUNS) {
-	    	     try {
-	    	     writer = new PrintWriter(new File("/Users/mahrukh/manet_results.csv"));
-	    	      } catch (FileNotFoundException e) {
-	    	            e.printStackTrace();}}
+     //4. Call Fire Model		
+     if(dtnrouting.SIMULATION_PART>1)
+     	fire_loc.fireSpread();
+     
+     //5. If a center of a node is in the range of fire---consider it dead and remove from live list
+      fire_loc.deadNodes();
 
-	    	//Last simulation run 
-	    	if(dtnrouting.SIMULATION_N0==1) {
-	    		writer.write(sb.toString());
-	    		writer.flush();
-	    		writer.close();}}
 }
 
 //******************************************************************************
@@ -184,8 +124,8 @@ public void clearSettings()
         dtnrouting.total_packetsDeliveredExpired=0;
         
         //Clearings the array lists of source, destination, their packets and their parameter
-        dtnrouting.Sources.clear();     
-        dtnrouting.Destinations.clear();
+        dtnrouting.allSources.clear();     
+        dtnrouting.allDestinations.clear();
         //Set movement model to null
         dtnrouting.movementtype="Random";
         dtnrouting.arePacketsDelivered.clear();
@@ -197,7 +137,7 @@ public void clearSettings()
         dtnrouting.contactsTA.setText("");
         dtnrouting.transferTA.setText("");
         dtnrouting.deliveryTA.setText("");
-        rpp.clearData(); //clear data from table and charts
+ //       rpp.clearData(); //clear data from table and charts
         dtnrouting.THIS_SIMULATION_ENDED=false;
         dtnrouting.SIMULATION_RUNNING=false;
         
@@ -244,9 +184,16 @@ public void simulationSettings(dtnrouting dtn)
         		{cnObj.RequirementsofDestination(dtnrouting.allNodes.get(g));
         	     cnObj.PacketsforDestination(dtnrouting.allNodes.get(g));}}
         	
+             //--------------
+    		 //Reset liveNodes to allNodes and deadNodes to empty
+    		 dtnrouting.liveNodes = (ArrayList<Node>) dtnrouting.allNodes.clone();
+    		 dtnrouting.liveSources = (ArrayList<Node>) dtnrouting.allSources.clone();
+    		 dtnrouting.liveDestinations = (ArrayList<Node>) dtnrouting.allDestinations.clone();
+    		 dtnrouting.deadNodes.clear();
+        	
         	//Remove UAV Nodes
-        	dtnrouting.allNodes.subList(dtnrouting.uav_index[0], dtnrouting.uav_index[0] +
-        			dtnrouting.uav_index.length).clear();
+        		//dtnrouting.allNodes.subList(dtnrouting.uav_index[0], dtnrouting.uav_index[0] +
+        		//dtnrouting.uav_index.length).clear();
         	
 	       
            //Take a break of one second
@@ -262,8 +209,8 @@ public void simulationSettings(dtnrouting dtn)
 	        
     	}
     	
-    	 // WITH UAV PART-----------------------
-         else {
+    	// WITH UAV PART OR REPEAT SIMULATION UNDER SAME SETTINGS-----------------------
+        else {
   
         	 //remove this part
 				
@@ -271,22 +218,33 @@ public void simulationSettings(dtnrouting dtn)
 				  //Remove UAV Nodes 
 					  //  dtnrouting.allNodes.subList(dtnrouting.uav_index[0],
 					  //  dtnrouting.uav_index[0] + dtnrouting.uav_index.length).clear();
-				  number_of_uavs = number_of_uavs+1;
-        	   //remove above part
+				  //number_of_uavs = number_of_uavs+1;
+				  //remove above part
         	 	 
         	 	 for(int n=0;n<dtnrouting.allNodes.size();n++)
             		dtnrouting.allNodes.get(n).refreshNodeSettings();
          		 for(int p=0;p<dtnrouting.arePacketsDelivered.size();p++)
          			dtnrouting.arePacketsDelivered.get(p).refreshPacketSettings();
+         		
+         		 //Reset liveNodes to allNodes and deadNodes to empty
+         		 dtnrouting.liveNodes = (ArrayList<Node>) dtnrouting.allNodes.clone();
+         		 dtnrouting.liveSources = (ArrayList<Node>) dtnrouting.allSources.clone();
+         		 dtnrouting.liveDestinations = (ArrayList<Node>) dtnrouting.allDestinations.clone();
+         		 dtnrouting.deadNodes.clear();
          		 //Add UAV nodes
-         		 
-         		 cnObj.CreateUAV(number_of_uavs);
+         		 	//cnObj.CreateUAV(number_of_uavs);
  
          	}
     			   
 		pathObj.ShortestPathsSD();
-    	pathObj.SetSource();
+    	pathObj.setInitialSource();
 	    runSimulation();
+	    
+	    //5. Set fire radius to initial radius
+	    FireLocation.radius=2;
+	    
+	
+	    
     }
 }//end of the method
 

@@ -7,8 +7,10 @@ package AdapterPackage;
  
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import Results.*;
+//import Results.*;
 import DTNRouting.*;
+
+import java.util.ArrayList;
 import java.util.Random;
 /**
  *
@@ -35,9 +37,16 @@ public void actionPerformed (ActionEvent ae)
 // CREATE PACKET 
  if(buttonname.equals("QoIT Path"))
  {
+	 	dtnrouting.liveNodes = (ArrayList<Node>) dtnrouting.allNodes.clone();
+	 	dtnrouting.liveSources = (ArrayList<Node>) dtnrouting.allSources.clone();
+	 	dtnrouting.liveDestinations = (ArrayList<Node>) dtnrouting.allDestinations.clone();
 	     QoITPATH pathObj=new QoITPATH();
          pathObj.ShortestPathsSD();
-         pathObj.SetSource();
+         pathObj.setInitialSource();
+         
+         FireLocation fire = new FireLocation();
+         fire.firePosition();
+         
  }
     
 // MOBILITY PATTERN
@@ -72,7 +81,7 @@ public void actionPerformed (ActionEvent ae)
   }
  
  // PERFORMANCE TABLE AND CHART
- if(buttonname.equals("Performance Table"))
+/* if(buttonname.equals("Performance Table"))
     {
       RP_Performance rp=new RP_Performance();
       rp.CreateGUI();
@@ -83,7 +92,7 @@ public void actionPerformed (ActionEvent ae)
       RP_Performance rp=new RP_Performance();
       rp.CreateGUI();
       rp.displayChart();
-    }
+    }*/
 
  }
 }
